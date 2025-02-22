@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="Pictures/wallpaper.webp" type="image/x-icon">
+  <title>Sistem za vlažnost tla</title>
+  <link rel="stylesheet" href="css.css">
+</head>
+
+  <div class="container">
+    <header>
+      <h1>SmartAir</h1>
+    </header>
+    <main>
+      <section class="status-card">
+        <div class="status-display">
+          <p>Temperatura:</p>
+          <p><span id="temperature" class="status-value">0</span>°C</p>
+        </div>
+      </section>
+      <section class="controls">
+        <div class="slide-button-container">
+          <div class="slide-button">
+            <input type="checkbox" id="modeSwitch" />
+            <label for="modeSwitch" class="slider"></label>
+          </div>
+          <p id="mode-status">Režim rada: Manuelni</p>
+        </div>
+        <div class="slide-button-container">
+          <div class="slide-button">
+            <input type="checkbox" id="fanSwitch" />
+            <label for="fanSwitch" class="slider"></label>
+          </div>
+          <p id="fan-status">Status ventilatora: Isključeno</p>
+        </div>
+        <div>
+          <!-- <button id="reset-button">Pošalji</button>  -->
+        </div>
+      </section>
+    </main>
+  </div>
+
+
+  <script type="module">
+   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+
+// Firebase konfiguracija
+const firebaseConfig = {
+  apiKey: "AIzaSyBgC_IGy_kM_4QksoFzG756UnU4StqYMrU",
+  authDomain: "smartair-835f0.firebaseapp.com",
+  projectId: "smartair-835f0",
+  storageBucket: "smartair-835f0.firebasestorage.app",
+  messagingSenderId: "223777908462",
+  appId: "1:223777908462:web:0a10092f4076027749f5ff",
+  measurementId: "G-2W1L3HC24L"
+};
+
+// Inicijalizacija Firebase aplikacije
+const app = initializeApp(firebaseConfig);
+const database = getDatabase(app);
+
+// Elementi za prikaz i kontrole
+const temperatureElement = document.getElementById('temperature');
+const modeSwitch = document.getElementById('modeSwitch');
+const fanSwitch = document.getElementById('fanSwitch');
+const modeStatus = document.getElementById('mode-status');
+const fanStatus = document.getElementById('fan-status');
+
+// Praćenje temperature iz baze
+onValue(ref(database, 'temperature'), (snapshot) => {
+  const temperature = snapshot.val();
+  temperatureElement.textContent = temperature !== null ? temperature.toFixed(1) : "0";
+});
+
+// Praćenje režima rada iz baze
+onValue(ref(database, 'mode'), (snapshot) => {
+  const mode = snapshot.val();
+  modeSwitch.checked = mode === 'automatic';
+  modeStatus.textContent = mode === 'automatic' ? 'Režim rada: Automatski' : 'Režim rada: Manuelni';
+});
+
+// Praćenje statusa ventilatora iz baze
+onValue(ref(database, 'fanState'), (snapshot) => {
+  const fanStateValue = snapshot.val();
+  fanSwitch.checked = fanStateValue === true;
+  fanStatus.textContent = fanStateValue ? 'Status ventilatora: Uključeno' : 'Status ventilatora: Isključeno';
+  fanStatus.style.color = fanStateValue ? '#2ecc71' : '#e74c3c';
+});
+
+// Promjena režima rada (automatski/manuelni)
+modeSwitch.addEventListener('change', () => {
+  const mode = modeSwitch.checked ? 'automatic' : 'manual';
+  set(ref(database, 'mode'), mode)
+    .then(() => console.log(`Režim promijenjen u: ${mode}`))
+    .catch((error) => console.error('Greška pri ažuriranju režima:', error));
+});
+
+// Promjena statusa ventilatora ručno
+fanSwitch.addEventListener('change', () => {
+  if (!modeSwitch.checked) {
+    const fan = fanSwitch.checked;
+    set(ref(database, 'fanState'), fan)
+      .then(() => console.log(`Ventilator je: ${fan ? 'uključen' : 'isključen'}`))
+      .catch((error) => console.error('Greška pri ažuriranju statusa ventilatora:', error));
+  }
+});
+
+// Automatsko uključivanje/isključivanje ventilatora ako je automatski režim aktivan
+onValue(ref(database, 'temperature'), (snapshot) => {
+  const temperature = snapshot.val();
+  if (modeSwitch.checked && temperature !== null) {
+    let fanAutoState = temperature >= 27; // Uključuje ventilator ako je temp. 27°C ili više
+    set(ref(database, 'fanState'), fanAutoState)
+      .then(() => console.log(`Automatski režim: Ventilator ${fanAutoState ? 'uključen' : 'isključen'}`))
+      .catch((error) => console.error('Greška pri ažuriranju statusa ventilatora u automatskom režimu:', error));
+  }
+});
+
+
+//Naizmjenicno salje on i off
+// const toggleButton = document.getElementById("reset-button"); 
+// let buttonState = "off"; 
+
+// toggleButton.addEventListener("click", () => {
+ 
+//   buttonState = (buttonState === "on") ? "off" : "on";
+
+  
+//   set(ref(database, "/buttonState"), buttonState)
+//     .then(() => {
+//       console.log(`Stanje dugmeta: ${buttonState === "on" ? "ON" : "OFF"}`);
+//       toggleButton.textContent = buttonState === "on" ? "Isključi" : "Uključi";
+//     })
+//     .catch((error) => console.error("Greška pri slanju podataka:", error));
+// });
+
+const toggleButton = document.getElementById("reset-button"); // Dugme
+
+toggleButton.addEventListener("click", () => {
+  // Uvijek postavlja "on" u Firebase
+  set(ref(database, "/buttonState"), "on")
+    .then(() => {
+      console.log(`Stanje dugmeta poslano: ON`);
+      toggleButton.textContent = "Poslano";
+    })
+    .catch((error) => console.error("Greška pri slanju podataka:", error));
+});
+
+  </script>
+</body>
+</html>
